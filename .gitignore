@@ -1,0 +1,6 @@
+.agents/
+__pycache__/
+*.py[cod]
+output/frames/
+*.blend1
+*.blend@
