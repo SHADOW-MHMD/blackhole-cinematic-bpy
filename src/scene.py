@@ -151,6 +151,9 @@ def generate_scene(output_blend=None, samples=128):
     print(f"=== Scene Assembly Complete. Total Frames: {scene.frame_end} ===")
 
     if output_blend:
+        out_blend_dir = os.path.dirname(os.path.abspath(output_blend))
+        if out_blend_dir:
+            os.makedirs(out_blend_dir, exist_ok=True)
         bpy.ops.wm.save_as_mainfile(filepath=output_blend)
         print(f"Saved .blend file to: {output_blend}")
 

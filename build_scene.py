@@ -25,12 +25,12 @@ def main():
         args = sys.argv[sys.argv.index("--") + 1:]
 
     parser = argparse.ArgumentParser(description="Black Hole Blender Builder")
-    parser.add_argument("--save-blend", type=str, default="/home/Mishal/bpy/blackhole_master.blend", help="Path to save .blend file")
+    parser.add_argument("--save-blend", type=str, default=None, help="Path to save .blend file")
     parser.add_argument("--samples", type=int, default=128, help="Cycles render samples")
     parser.add_argument("--render-frame", type=int, default=None, help="Render a single frame")
     parser.add_argument("--render-batch", nargs=2, type=int, default=None, help="Render frame range: start end")
-    parser.add_argument("--output", type=str, default="/home/Mishal/bpy/output/preview.png", help="Output path for single frame render")
-    parser.add_argument("--output-dir", type=str, default="/home/Mishal/bpy/output/frames/", help="Output directory for batch frames")
+    parser.add_argument("--output", type=str, default="output/preview.png", help="Output path for single frame render")
+    parser.add_argument("--output-dir", type=str, default="output/frames/", help="Output directory for batch frames")
 
     parsed = parser.parse_args(args)
 
@@ -40,6 +40,9 @@ def main():
     import bpy
 
     if parsed.render_frame is not None:
+        out_dir = os.path.dirname(os.path.abspath(parsed.output))
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
         bpy.context.scene.frame_set(parsed.render_frame)
         bpy.context.scene.render.filepath = parsed.output
         print(f"Rendering single frame {parsed.render_frame} to {parsed.output}...")
