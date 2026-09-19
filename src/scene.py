@@ -30,8 +30,8 @@ def clean_scene():
             bpy.data.materials.remove(block)
 
 
-def configure_cycles_render(scene, samples=128, use_gpu=True):
-    """Configures Blender Cycles render engine with production settings."""
+def configure_cycles_render(scene, samples=128, use_gpu=True, use_denoising=True, denoiser='AUTO'):
+    """Configures Blender Cycles render engine with production settings and fast GPU acceleration."""
     import bpy
     scene.render.engine = 'CYCLES'
     scene.render.resolution_x = 1920
@@ -48,7 +48,7 @@ def configure_cycles_render(scene, samples=128, use_gpu=True):
     cycles = scene.cycles
     cycles.samples = samples
     cycles.preview_samples = 32
-    cycles.use_denoising = True
+    cycles.use_denoising = use_denoising
     cycles.max_bounces = 6
     cycles.diffuse_bounces = 2
     cycles.glossy_bounces = 4
@@ -56,12 +56,12 @@ def configure_cycles_render(scene, samples=128, use_gpu=True):
     cycles.volume_bounces = 2
     cycles.transparent_max_bounces = 8
 
-    # Enable NVIDIA GPU compute (CUDA / OPTIX)
+    # Enable NVIDIA GPU compute (OPTIX preferred over CUDA for RT/Tensor core speed)
     if use_gpu:
         try:
             prefs = bpy.context.preferences.addons['cycles'].preferences
             gpu_activated = False
-            for backend in ['CUDA', 'OPTIX']:
+            for backend in ['OPTIX', 'CUDA']:
                 try:
                     prefs.compute_device_type = backend
                     if hasattr(prefs, 'get_devices'):
@@ -87,6 +87,39 @@ def configure_cycles_render(scene, samples=128, use_gpu=True):
         except Exception as e:
             print(f"[Warning] GPU initialization error: {e}. Defaulting to CPU.")
             cycles.device = 'CPU'
+
+    # Configure hardware denoiser to prevent slow CPU denoising stall
+    if use_denoising and denoiser != 'NONE':
+        cycles.use_denoising = True
+        denoiser_set = False
+        if cycles.device == 'GPU':
+            if denoiser in ['AUTO', 'OPTIX']:
+                try:
+                    cycles.denoiser = 'OPTIX'
+                    print("[Cycles GPU] Hardware OptiX Tensor-Core denoiser enabled (~0.05s/frame)!")
+                    denoiser_set = True
+                except Exception as e:
+                    print(f"[Cycles GPU] OptiX denoiser unavailable ({e}), trying GPU OIDN...")
+            if not denoiser_set and denoiser in ['AUTO', 'OPENIMAGEDENOISE']:
+                try:
+                    cycles.denoiser = 'OPENIMAGEDENOISE'
+                    cycles.denoising_use_gpu = True
+                    cycles.denoising_prefilter = 'FAST'
+                    cycles.denoising_quality = 'FAST'
+                    print("[Cycles GPU] OpenImageDenoise configured with GPU acceleration & FAST prefilter!")
+                    denoiser_set = True
+                except Exception as e:
+                    print(f"[Cycles GPU] OIDN GPU configuration warning: {e}")
+        if not denoiser_set:
+            try:
+                cycles.denoiser = 'OPENIMAGEDENOISE'
+                cycles.denoising_prefilter = 'FAST'
+                cycles.denoising_quality = 'FAST'
+            except Exception:
+                pass
+    else:
+        cycles.use_denoising = False
+        print("[Cycles] Denoising disabled for maximum raw render speed.")
 
 
 def build_black_hole_geometry():
@@ -146,7 +179,7 @@ def build_black_hole_geometry():
     return horizon_obj, photon_obj, disk_obj, lens_obj
 
 
-def generate_scene(output_blend=None, samples=128):
+def generate_scene(output_blend=None, samples=128, use_denoising=True, denoiser='AUTO'):
     """Main entrypoint to assemble the entire film scene."""
     import bpy
 
@@ -154,7 +187,7 @@ def generate_scene(output_blend=None, samples=128):
     clean_scene()
 
     scene = bpy.context.scene
-    configure_cycles_render(scene, samples=samples)
+    configure_cycles_render(scene, samples=samples, use_denoising=use_denoising, denoiser=denoiser)
     shaders.setup_world_starfield()
 
     horizon, photon, disk, lens = build_black_hole_geometry()
