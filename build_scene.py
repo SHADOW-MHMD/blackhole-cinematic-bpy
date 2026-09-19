@@ -27,8 +27,9 @@ def main():
     parser = argparse.ArgumentParser(description="Black Hole Blender Builder")
     parser.add_argument("--save-blend", type=str, default=None, help="Path to save .blend file")
     parser.add_argument("--samples", type=int, default=128, help="Cycles render samples")
-    parser.add_argument("--denoiser", type=str, default="AUTO", choices=["AUTO", "OPTIX", "OPENIMAGEDENOISE", "NONE"], help="Denoiser backend")
-    parser.add_argument("--no-denoise", action="store_true", help="Disable denoising completely for max speed")
+    parser.add_argument("--denoiser", type=str, default="NONE", choices=["NONE", "OPENIMAGEDENOISE"], help="Denoiser backend")
+    parser.add_argument("--denoise", action="store_true", help="Enable denoising")
+    parser.add_argument("--no-denoise", action="store_true", help="Explicitly disable denoising (default)")
     parser.add_argument("--render-frame", type=int, default=None, help="Render a single frame")
     parser.add_argument("--render-batch", nargs=2, type=int, default=None, help="Render frame range: start end")
     parser.add_argument("--output", type=str, default="output/preview.png", help="Output path for single frame render")
@@ -36,8 +37,12 @@ def main():
 
     parsed = parser.parse_args(args)
 
-    use_denoising = False if (parsed.no_denoise or parsed.denoiser == "NONE") else True
-    denoiser_mode = "NONE" if not use_denoising else parsed.denoiser
+    use_denoising = False
+    if parsed.denoise or (parsed.denoiser != "NONE"):
+        use_denoising = True
+    if parsed.no_denoise:
+        use_denoising = False
+    denoiser_mode = parsed.denoiser if use_denoising else "NONE"
 
     # Build scene
     scn = scene.generate_scene(output_blend=parsed.save_blend, samples=parsed.samples, use_denoising=use_denoising, denoiser=denoiser_mode)

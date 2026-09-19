@@ -36,17 +36,22 @@ def main():
     parser.add_argument("--end-frame", type=int, default=cinematics.TOTAL_FRAMES, help="Ending frame number")
     parser.add_argument("--act", type=int, default=None, choices=[1, 2, 3, 4], help="Render specific Act (1, 2, 3, or 4)")
     parser.add_argument("--samples", type=int, default=96, help="Cycles samples per frame")
-    parser.add_argument("--denoiser", type=str, default="AUTO", choices=["AUTO", "OPTIX", "OPENIMAGEDENOISE", "NONE"], help="Denoiser backend")
-    parser.add_argument("--no-denoise", action="store_true", help="Disable denoising completely for pure raytrace speed")
+    parser.add_argument("--denoiser", type=str, default="NONE", choices=["NONE", "OPENIMAGEDENOISE"], help="Denoiser backend (default: NONE for 1.8s/frame GPU speed)")
+    parser.add_argument("--denoise", action="store_true", help="Enable denoising via OpenImageDenoise")
+    parser.add_argument("--no-denoise", action="store_true", help="Explicitly disable denoising")
     parser.add_argument("--drive-dir", type=str, default="/content/drive/MyDrive/blackhole_film/frames", help="Google Drive output directory")
     parser.add_argument("--local-dir", type=str, default="/content/frames", help="Local fast scratch directory")
     parser.add_argument("--resolution-percentage", type=int, default=100, help="Render resolution percent (100 = 1080p, 200 = 4K)")
 
     parsed = parser.parse_args(args)
 
-    # Denoiser setting
-    use_denoising = False if (parsed.no_denoise or parsed.denoiser == "NONE") else True
-    denoiser_mode = "NONE" if not use_denoising else parsed.denoiser
+    # Denoiser setting: Defaults to disabled for ultra-fast 1.8s GPU raytracing (no OptiX crash or 40s CPU stall)
+    use_denoising = False
+    if parsed.denoise or (parsed.denoiser != "NONE"):
+        use_denoising = True
+    if parsed.no_denoise:
+        use_denoising = False
+    denoiser_mode = parsed.denoiser if use_denoising else "NONE"
 
     # Resolve frame range
     if parsed.act == 1:
