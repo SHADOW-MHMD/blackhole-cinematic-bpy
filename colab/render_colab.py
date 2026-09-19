@@ -35,7 +35,7 @@ def main():
     parser.add_argument("--start-frame", type=int, default=1, help="Starting frame number")
     parser.add_argument("--end-frame", type=int, default=cinematics.TOTAL_FRAMES, help="Ending frame number")
     parser.add_argument("--act", type=int, default=None, choices=[1, 2, 3, 4], help="Render specific Act (1, 2, 3, or 4)")
-    parser.add_argument("--samples", type=int, default=256, help="Cycles samples per frame")
+    parser.add_argument("--samples", type=int, default=96, help="Cycles samples per frame")
     parser.add_argument("--drive-dir", type=str, default="/content/drive/MyDrive/blackhole_film/frames", help="Google Drive output directory")
     parser.add_argument("--local-dir", type=str, default="/content/frames", help="Local fast scratch directory")
     parser.add_argument("--resolution-percentage", type=int, default=100, help="Render resolution % (100 = 1080p, 200 = 4K)")

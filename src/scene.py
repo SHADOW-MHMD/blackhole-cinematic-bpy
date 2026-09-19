@@ -49,30 +49,43 @@ def configure_cycles_render(scene, samples=128, use_gpu=True):
     cycles.samples = samples
     cycles.preview_samples = 32
     cycles.use_denoising = True
-    cycles.max_bounces = 12
-    cycles.diffuse_bounces = 4
-    cycles.glossy_bounces = 8
-    cycles.transmission_bounces = 12
-    cycles.volume_bounces = 4
-    cycles.transparent_max_bounces = 16
+    cycles.max_bounces = 6
+    cycles.diffuse_bounces = 2
+    cycles.glossy_bounces = 4
+    cycles.transmission_bounces = 6
+    cycles.volume_bounces = 2
+    cycles.transparent_max_bounces = 8
 
-    # Attempt to enable GPU
+    # Enable NVIDIA GPU compute (CUDA / OPTIX)
     if use_gpu:
         try:
-            cycles.device = 'GPU'
             prefs = bpy.context.preferences.addons['cycles'].preferences
-            prefs.refresh_devices()
-            # Try OptiX first, fallback to CUDA
-            for backend in ['OPTIX', 'CUDA']:
+            gpu_activated = False
+            for backend in ['CUDA', 'OPTIX']:
                 try:
                     prefs.compute_device_type = backend
+                    if hasattr(prefs, 'get_devices'):
+                        prefs.get_devices()
+                    else:
+                        prefs.refresh_devices()
                     for dev in prefs.devices:
-                        dev.use = True
-                    break
-                except Exception:
-                    pass
+                        if dev.type == backend:
+                            dev.use = True
+                            gpu_activated = True
+                            print(f"[Cycles GPU] Activated GPU: {dev.name} ({backend})")
+                        else:
+                            dev.use = False  # Disable CPU to prevent slow hybrid rendering
+                    if gpu_activated:
+                        cycles.device = 'GPU'
+                        print(f"[Cycles GPU] Pure GPU rendering successfully engaged via {backend}!")
+                        break
+                except Exception as ex:
+                    print(f"[Cycles GPU] Backend {backend} attempt: {ex}")
+            if not gpu_activated:
+                print("[Cycles GPU] No active GPU device detected. Falling back to CPU.")
+                cycles.device = 'CPU'
         except Exception as e:
-            print(f"[Warning] GPU initialization: {e}. Defaulting to CPU.")
+            print(f"[Warning] GPU initialization error: {e}. Defaulting to CPU.")
             cycles.device = 'CPU'
 
 
